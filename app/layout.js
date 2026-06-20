@@ -6,6 +6,7 @@ export const metadata = {
   title: 'E-Bridge — E-Waste Management & 2nd Hand Components',
   description: 'E-Bridge is your one-stop platform for responsible e-waste recycling and buying/selling second-hand electronic components. Join the circular electronics economy.',
   keywords: 'e-waste, recycling, electronic components, second-hand electronics, PCB, circuit board, buy components, sell components',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 
 export default function RootLayout({ children }) {

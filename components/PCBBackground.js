@@ -9,10 +9,11 @@ export default function PCBBackground() {
     const container = containerRef.current;
     if (!container) return;
 
-    // Generate circuit traces
-    const traceCount = 25;
-    const viaCount = 18;
-    const chipCount = 6;
+    // Reduce elements on mobile for performance
+    const isMobile = window.innerWidth <= 768;
+    const traceCount = isMobile ? 10 : 25;
+    const viaCount = isMobile ? 8 : 18;
+    const chipCount = isMobile ? 3 : 6;
 
     for (let i = 0; i < traceCount; i++) {
       const trace = document.createElement('div');
@@ -21,11 +22,11 @@ export default function PCBBackground() {
       if (trace.classList.contains('horizontal')) {
         trace.style.top = `${Math.random() * 100}%`;
         trace.style.left = `${Math.random() * 60}%`;
-        trace.style.width = `${100 + Math.random() * 300}px`;
+        trace.style.width = `${100 + Math.random() * (isMobile ? 150 : 300)}px`;
       } else {
         trace.style.left = `${Math.random() * 100}%`;
         trace.style.top = `${Math.random() * 60}%`;
-        trace.style.height = `${100 + Math.random() * 300}px`;
+        trace.style.height = `${100 + Math.random() * (isMobile ? 150 : 300)}px`;
       }
       
       trace.style.animationDelay = `${Math.random() * 4}s`;
@@ -33,11 +34,10 @@ export default function PCBBackground() {
       container.appendChild(trace);
     }
 
-    // Generate vias / solder pads
     for (let i = 0; i < viaCount; i++) {
       const via = document.createElement('div');
       via.className = 'pcb-via';
-      const size = 8 + Math.random() * 16;
+      const size = 8 + Math.random() * (isMobile ? 10 : 16);
       via.style.width = `${size}px`;
       via.style.height = `${size}px`;
       via.style.top = `${Math.random() * 100}%`;
@@ -47,12 +47,11 @@ export default function PCBBackground() {
       container.appendChild(via);
     }
 
-    // Generate IC chips
     for (let i = 0; i < chipCount; i++) {
       const chip = document.createElement('div');
       chip.className = 'pcb-chip';
-      const w = 30 + Math.random() * 50;
-      const h = 20 + Math.random() * 30;
+      const w = 30 + Math.random() * (isMobile ? 25 : 50);
+      const h = 20 + Math.random() * (isMobile ? 15 : 30);
       chip.style.width = `${w}px`;
       chip.style.height = `${h}px`;
       chip.style.top = `${Math.random() * 100}%`;
@@ -61,14 +60,6 @@ export default function PCBBackground() {
     }
 
     return () => {
-      while (container.firstChild) {
-        if (container.firstChild.className !== 'pcb-grid') {
-          container.removeChild(container.firstChild);
-        } else {
-          break;
-        }
-      }
-      // Remove all dynamically added elements
       const dynamicElements = container.querySelectorAll('.pcb-trace, .pcb-via, .pcb-chip');
       dynamicElements.forEach(el => el.remove());
     };
