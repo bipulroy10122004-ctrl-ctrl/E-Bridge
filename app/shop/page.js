@@ -4,89 +4,6 @@ import { useState, useEffect } from 'react';
 import ProductCard from '../../components/ProductCard';
 import SellForm from '../../components/SellForm';
 
-const SAMPLE_PRODUCTS = [
-  {
-    id: 101,
-    name: 'Arduino Uno R3 Board',
-    category: 'ICs & Microcontrollers',
-    price: 450,
-    condition: 'Excellent',
-    description: 'Barely used Arduino Uno R3. All pins working. Comes with USB cable. Perfect for prototyping projects.',
-    quantity: 1,
-    date: '2026-06-10',
-  },
-  {
-    id: 102,
-    name: 'Raspberry Pi 4 Model B (4GB)',
-    category: 'PCBs & Boards',
-    price: 2800,
-    condition: 'Good',
-    description: 'Used for a home server project. Runs perfectly. Minor scuff on case. Includes power supply.',
-    quantity: 1,
-    date: '2026-06-12',
-  },
-  {
-    id: 103,
-    name: '100μF Electrolytic Capacitors (50-pack)',
-    category: 'Capacitors',
-    price: 120,
-    condition: 'Excellent',
-    description: 'Brand new surplus stock. 25V rated. Through-hole mount. Great for audio circuits and power filtering.',
-    quantity: 50,
-    date: '2026-06-14',
-  },
-  {
-    id: 104,
-    name: '0.96" OLED Display Module (I2C)',
-    category: 'Displays',
-    price: 180,
-    condition: 'Excellent',
-    description: 'SSD1306 driver. 128x64 pixels. Works with Arduino and ESP32. Tested and fully functional.',
-    quantity: 3,
-    date: '2026-06-16',
-  },
-  {
-    id: 105,
-    name: 'ESP32 Development Board',
-    category: 'ICs & Microcontrollers',
-    price: 350,
-    condition: 'Good',
-    description: 'Dual-core WiFi + Bluetooth MCU. Used in IoT project. All GPIOs functional. Flash memory intact.',
-    quantity: 2,
-    date: '2026-06-17',
-  },
-  {
-    id: 106,
-    name: 'HC-SR04 Ultrasonic Sensor',
-    category: 'Sensors',
-    price: 60,
-    condition: 'Excellent',
-    description: 'Measuring range: 2cm-400cm. Accuracy: 3mm. Gently used in robotics project. Like new condition.',
-    quantity: 5,
-    date: '2026-06-18',
-  },
-  {
-    id: 107,
-    name: 'NEMA 17 Stepper Motor',
-    category: 'Motors & Actuators',
-    price: 380,
-    condition: 'Good',
-    description: '1.8° step angle. 1.5A rated. Salvaged from 3D printer. Runs smoothly. Tested with A4988 driver.',
-    quantity: 2,
-    date: '2026-06-19',
-  },
-  {
-    id: 108,
-    name: '5V 3A USB-C Power Supply',
-    category: 'Power Supplies',
-    price: 220,
-    condition: 'Fair',
-    description: 'Official Raspberry Pi power supply. Cable has minor wear but connector is solid. Stable output verified.',
-    quantity: 1,
-    date: '2026-06-20',
-  },
-];
-
 const ALL_CATEGORIES = [
   'All',
   'ICs & Microcontrollers',
@@ -107,17 +24,30 @@ const ALL_CATEGORIES = [
 export default function ShopPage() {
   const [showSellForm, setShowSellForm] = useState(false);
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem('ebridge-products');
-    if (stored) {
-      setProducts(JSON.parse(stored));
-    } else {
-      setProducts(SAMPLE_PRODUCTS);
-      localStorage.setItem('ebridge-products', JSON.stringify(SAMPLE_PRODUCTS));
+    async function fetchProducts() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/shop');
+        if (!res.ok) {
+          throw new Error('Failed to fetch shop products');
+        }
+        const data = await res.json();
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError('Could not connect to the backend. Please refresh the page to try again.');
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchProducts();
   }, []);
 
   const showToast = (message) => {
@@ -125,12 +55,35 @@ export default function ShopPage() {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const handleSellSubmit = (product) => {
-    const updated = [product, ...products];
-    setProducts(updated);
-    localStorage.setItem('ebridge-products', JSON.stringify(updated));
-    setShowSellForm(false);
-    showToast('✅ Component listed for sale!');
+  const handleSellSubmit = async (product) => {
+    try {
+      const response = await fetch('/api/shop', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: product.name,
+          category: product.category,
+          price: product.price,
+          condition: product.condition,
+          description: product.description,
+          quantity: product.quantity,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to list component for sale');
+      }
+
+      const savedProduct = await response.json();
+      setProducts((prevProducts) => [savedProduct, ...prevProducts]);
+      setShowSellForm(false);
+      showToast('✅ Component listed for sale!');
+    } catch (error) {
+      console.error(error);
+      showToast('❌ Error listing component. Please try again.');
+    }
   };
 
   const handleBuy = (product) => {
@@ -182,10 +135,22 @@ export default function ShopPage() {
       <div id="products-listing">
         <div className="listed-title">
           AVAILABLE COMPONENTS
-          <span className="listed-count">{filteredProducts.length} items</span>
+          <span className="listed-count">
+            {loading ? '...' : `${filteredProducts.length} items`}
+          </span>
         </div>
 
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <div className="empty-icon loading-spinner" style={{ animation: 'spin 2s linear infinite' }}>⏳</div>
+            <p className="empty-text">Connecting to server and retrieving shop listings...</p>
+          </div>
+        ) : error ? (
+          <div className="empty-state">
+            <div className="empty-icon">⚠️</div>
+            <p className="empty-text" style={{ color: '#ff3333' }}>{error}</p>
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">🔍</div>
             <p className="empty-text">
@@ -219,3 +184,4 @@ export default function ShopPage() {
     </div>
   );
 }
+

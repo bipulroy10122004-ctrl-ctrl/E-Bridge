@@ -21,52 +21,32 @@ const STATUS_LABELS = {
   processing: { label: 'Processing', className: 'status-processing' },
 };
 
-const SAMPLE_EWASTE = [
-  {
-    id: 1,
-    name: 'Dell Inspiron 15 Laptop',
-    category: 'Computers & Laptops',
-    condition: 'Not Working',
-    description: 'Screen broken, motherboard intact. 8GB RAM, 256GB SSD still recoverable.',
-    address: '42 Circuit Lane, Tech City',
-    status: 'received',
-    date: '2026-06-15',
-  },
-  {
-    id: 2,
-    name: 'Samsung Galaxy S21 Ultra',
-    category: 'Smartphones & Tablets',
-    condition: 'Partially Working',
-    description: 'Battery bloated, screen cracked but touch works. Camera module salvageable.',
-    address: '88 Silicon Ave',
-    status: 'processing',
-    date: '2026-06-18',
-  },
-  {
-    id: 3,
-    name: 'HP LaserJet Pro MFP',
-    category: 'Printers & Scanners',
-    condition: 'Not Working',
-    description: 'Paper feed mechanism jammed. Toner cartridge full. Good for parts.',
-    address: '15 Board Street',
-    status: 'pending',
-    date: '2026-06-20',
-  },
-];
-
 export default function RecyclePage() {
   const [showForm, setShowForm] = useState(false);
   const [ewasteItems, setEwasteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem('ebridge-ewaste');
-    if (stored) {
-      setEwasteItems(JSON.parse(stored));
-    } else {
-      setEwasteItems(SAMPLE_EWASTE);
-      localStorage.setItem('ebridge-ewaste', JSON.stringify(SAMPLE_EWASTE));
+    async function fetchItems() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/recycle');
+        if (!res.ok) {
+          throw new Error('Failed to fetch e-waste items');
+        }
+        const data = await res.json();
+        setEwasteItems(data);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setError('Could not connect to the backend. Please refresh the page to try again.');
+      } finally {
+        setLoading(false);
+      }
     }
+    fetchItems();
   }, []);
 
   const showToast = (message) => {
@@ -74,12 +54,34 @@ export default function RecyclePage() {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const handleSubmit = (item) => {
-    const updated = [item, ...ewasteItems];
-    setEwasteItems(updated);
-    localStorage.setItem('ebridge-ewaste', JSON.stringify(updated));
-    setShowForm(false);
-    showToast('✅ E-waste listed successfully!');
+  const handleSubmit = async (item) => {
+    try {
+      const response = await fetch('/api/recycle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: item.name,
+          category: item.category,
+          condition: item.condition,
+          description: item.description,
+          address: item.address,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to list e-waste');
+      }
+
+      const savedItem = await response.json();
+      setEwasteItems((prevItems) => [savedItem, ...prevItems]);
+      setShowForm(false);
+      showToast('✅ E-waste listed successfully!');
+    } catch (error) {
+      console.error(error);
+      showToast('❌ Error listing e-waste. Please try again.');
+    }
   };
 
   return (
@@ -138,10 +140,22 @@ export default function RecyclePage() {
       <section className="listed-section" id="ewaste-listings">
         <div className="listed-title">
           LISTED E-WASTE
-          <span className="listed-count">{ewasteItems.length} items</span>
+          <span className="listed-count">
+            {loading ? '...' : `${ewasteItems.length} items`}
+          </span>
         </div>
 
-        {ewasteItems.length === 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <div className="empty-icon loading-spinner" style={{ animation: 'spin 2s linear infinite' }}>⏳</div>
+            <p className="empty-text">Connecting to server and retrieving listings...</p>
+          </div>
+        ) : error ? (
+          <div className="empty-state">
+            <div className="empty-icon">⚠️</div>
+            <p className="empty-text" style={{ color: '#ff3333' }}>{error}</p>
+          </div>
+        ) : ewasteItems.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📦</div>
             <p className="empty-text">No e-waste listed yet. Be the first to contribute!</p>
@@ -191,3 +205,4 @@ export default function RecyclePage() {
     </div>
   );
 }
+
