@@ -862,6 +862,19 @@ body {
   font-weight: 600;
 }
 
+.product-qty {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  background: rgba(51, 153, 255, 0.1);
+  color: var(--led-blue);
+  border: 1px solid rgba(51, 153, 255, 0.3);
+}
+
 .condition-excellent {
   background: rgba(0, 255, 65, 0.1);
   color: var(--trace-glow);

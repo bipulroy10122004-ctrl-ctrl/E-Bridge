@@ -37,6 +37,9 @@ export default function ProductCard({ product, onBuy, onAdd }) {
         )}
         <div className="product-meta">
           <span className="product-price">₹{product.price?.toLocaleString()}</span>
+          {product.quantity > 1 && (
+            <span className="product-qty">Qty: {product.quantity}</span>
+          )}
           <span className={`product-condition ${conditionClass}`}>
             {product.condition}
           </span>
